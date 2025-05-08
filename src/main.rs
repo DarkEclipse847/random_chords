@@ -37,15 +37,36 @@ fn add_song(
     statement.execute((&new_song.name, &new_song.author, &new_song.link, &new_song.mood, &new_song.genre))?;
     Ok(())
 }
-fn add_link(connection: &Connection, id: i32, link: String){}
-fn add_mood(connection: &Connection, id: i32, mood: String){}
-fn add_genre(connection: &Connection, id: i32, genre: String){}
+
+fn add_link(connection: &Connection, id: i32, link: String)-> Result<()>{
+    let query = "UPDATE songs SET link = ?2 WHERE id = ?1";
+    let mut statement = (*connection).prepare(query)?;
+    statement.execute((&id, &link))?;
+    Ok(())
+}
+fn add_mood(connection: &Connection, id: i32, mood: String) -> Result<()>{
+    let query = "UPDATE songs SET mood = ?2 WHERE id = ?1";
+    let mut statement = (*connection).prepare(query)?;
+    statement.execute((&id, &mood))?;
+    Ok(())
+}
+fn add_genre(connection: &Connection, id: i32, genre: String) -> Result<()>{
+    let query = "UPDATE songs SET genre = ?2 WHERE id = ?1";
+    let mut statement = (*connection).prepare(query)?;
+    statement.execute((&id, &genre))?;
+    Ok(())
+}
+fn delete_song(connection: &Connection, id: i32) -> Result<()>{
+    let query = "DELETE FROM songs WHERE id = ?1";
+    let mut statement = (*connection).prepare(query)?;
+    statement.execute(((&id),));
+    Ok(())
+}
 
 fn main() -> Result<()>{
     let connection = Connection::open_in_memory().unwrap();
     let _ = create_db(&connection);
-    let _ = add_song(&connection, "ОБЖ".to_string(), "Птицу ЕМЪ".to_string(), Some("amdm.com".to_string()), Some("Scary, Dark, Calm, Moody".to_string()), Some("Hip-hop, Rap".to_string()));
-    let _ = add_song(&connection, "Нумеро Уно".to_string(), "Птицу ЕМЪ".to_string(), Some("amdm.com".to_string()), Some("Scary, Dark, Calm, Moody".to_string()), None);
+
     let mut statement = connection.prepare("SELECT id, name, author, link, mood, genre from songs")?;
     let songs_iter = statement.query_map([], |row| {
         Ok(
