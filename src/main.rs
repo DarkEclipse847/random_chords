@@ -17,17 +17,26 @@ struct Song{
 #[command(version, about, long_about = None)]
 struct Args{
     #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
+    //add a song(name and author) to database
     new: bool,
     #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
+    //add/replace a link(with chords) on an existing song by id
     link: bool,
     #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
+    //add/replace the mood tags on an existing song by id
     mood: bool,
     #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
+    //add/replace the genre tags on an existing song by id
     genre: bool,
     #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
+    //delete song from pool by id
     delete: bool
 }
 
+//This function handles arguments using 'clap'
+//it calls some add/delete functions(presented below) depending on argument provided
+//When certain argument encountered, this function calls std::io lib to handle user inputs
+//that inputs are then trimmed and assigned to types.
 fn args_handler(connection: &Connection, args: &Args){
     if args.new == true{
         let mut name_input = String::new();
@@ -87,6 +96,7 @@ fn create_db(connection: &Connection) -> Result<()>{
     Ok(())
 }
 
+//Add song to the db with only 'name' and 'author' columns filled
 fn add_song(
     connection: &Connection,
     name: String,
@@ -109,24 +119,31 @@ fn add_song(
     Ok(())
 }
 
+//Adds/replaces link in existing db row
 fn add_link(connection: &Connection, id: i32, link: String)-> Result<()>{
     let query = "UPDATE songs SET link = ?2 WHERE id = ?1";
     let mut statement = (*connection).prepare(query)?;
     statement.execute((&id, &link))?;
     Ok(())
 }
+
+//Adds/replaces mood tags in existing db row
 fn add_mood(connection: &Connection, id: i32, mood: String) -> Result<()>{
     let query = "UPDATE songs SET mood = ?2 WHERE id = ?1";
     let mut statement = (*connection).prepare(query)?;
     statement.execute((&id, &mood))?;
     Ok(())
 }
+
+//Adds/replaces genre tags in existing db row
 fn add_genre(connection: &Connection, id: i32, genre: String) -> Result<()>{
     let query = "UPDATE songs SET genre = ?2 WHERE id = ?1";
     let mut statement = (*connection).prepare(query)?;
     statement.execute((&id, &genre))?;
     Ok(())
 }
+
+//Deletes entire row by provided id
 fn delete_song(connection: &Connection, id: i32) -> Result<()>{
     let query = "DELETE FROM songs WHERE id = ?1";
     let mut statement = (*connection).prepare(query)?;
@@ -135,6 +152,8 @@ fn delete_song(connection: &Connection, id: i32) -> Result<()>{
 }
 
 fn randomise_song(connection: &Connection) -> Result<()>{
+    //This query shuffles row order in database and selectts only one value
+    //there is no need to use rand crate :D
     let mut statement = (*connection).prepare("SELECT id, name, author, link, mood, genre FROM songs ORDER BY RANDOM() LIMIT 1")?;
     let songs_iter = statement.query_map([], |row| {
         Ok(
@@ -149,6 +168,7 @@ fn randomise_song(connection: &Connection) -> Result<()>{
         )
     })?;
     for song in songs_iter {
+        //Variable to avoid moving value
         let rand_song = song.unwrap();
         println!("\n{:?} – {:?}", rand_song.author, rand_song.name);
         match rand_song.link {
@@ -168,12 +188,16 @@ fn randomise_song(connection: &Connection) -> Result<()>{
 }
 
 fn main() -> Result<()>{
+    //Establishing connection with database, creating reference to connection instanse
+    //That instance uses deref in functions later to avoid 'moved value' issues
+
     let db_path = "./songs_db.db3";
     let connection = Connection::open(db_path)?;
     let _ = create_db(&connection);
 
     let args = Args::parse();
     let _ = args_handler(&connection, &args);
+    //Checking if no 'manipulation' arguments were provided, then returning random song from db
     if (args.new, args.link, args.mood, args.genre, args.delete) == (false, false, false, false, false){
         let _ = randomise_song(&connection);
     }
