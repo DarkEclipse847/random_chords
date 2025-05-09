@@ -11,6 +11,7 @@ struct Song{
     link: Option<String>,
     mood: Option<String>,
     genre: Option<String>,
+    lang: Option<String>
 }
 
 #[derive(Parser, Debug)]
@@ -28,6 +29,9 @@ struct Args{
     #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
     //add/replace the genre tags on an existing song by id
     genre: bool,
+    #[arg(long, default_value_t = false, action = ArgAction::SetTrue)]
+    //add/replace language of the song by id
+    lang: bool,
     #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
     //delete song from pool by id
     delete: bool
@@ -52,8 +56,9 @@ fn args_handler(connection: &Connection, args: &Args){
             link: None,
             mood: None,
             genre: None,
+            lang: None,
         };
-        let _ = add_song(connection, new_song.name, new_song.author, new_song.link, new_song.mood, new_song.genre);
+        let _ = add_song(connection, new_song.name, new_song.author, new_song.link, new_song.mood, new_song.genre, new_song.lang);
     }
     if args.link == true{
         let mut id_input = String::new();
@@ -82,6 +87,15 @@ fn args_handler(connection: &Connection, args: &Args){
         io::stdin().read_line(&mut genre_input).expect("Failed to process your input");
         let _ = add_genre(connection, id_input.trim().parse::<i32>().unwrap(), genre_input.trim().to_string());
     }
+    if args.lang == true{
+        let mut id_input = String::new();
+        let mut lang_input = String::new();
+        println!("\nPlease input id of the song");
+        io::stdin().read_line(&mut id_input).expect("Failed to process your input");
+        println!("\nPlease input language of the song");
+        io::stdin().read_line(&mut lang_input).expect("Failed to process your input");
+        let _ = add_lang(connection, id_input.trim().parse::<i32>().unwrap(), lang_input.trim().to_string());
+    }
     if args.delete == true{
         let mut id_input = String::new();
         println!("\nPlease input id of the song");
@@ -91,7 +105,7 @@ fn args_handler(connection: &Connection, args: &Args){
 }
 
 fn create_db(connection: &Connection) -> Result<()>{
-    let query = "CREATE TABLE IF NOT EXISTS songs (id INTEGER PRIMARY KEY, author TEXT, name TEXT, link TEXT, mood TEXT, genre TEXT, dub_checker TEXT UNIQUE);";
+    let query = "CREATE TABLE IF NOT EXISTS songs (id INTEGER PRIMARY KEY, author TEXT, name TEXT, link TEXT, mood TEXT, genre TEXT, lang TEXT, dub_checker TEXT UNIQUE);";
     (*connection).execute(query, ())?;
     Ok(())
 }
@@ -104,6 +118,7 @@ fn add_song(
     link: Option<String>,
     mood: Option<String>,
     genre: Option<String>,
+    lang: Option<String>,
 ) -> Result<()>{
     let new_song = Song{
         id: 0,
@@ -111,11 +126,12 @@ fn add_song(
         author: author,
         link: link,
         mood: mood,
-        genre: genre
+        genre: genre,
+        lang: lang
     };
-    let query = "INSERT INTO songs(name, author, link, mood, genre, dub_checker) VALUES (?1, ?2, ?3, ?4, ?5, LOWER(CONCAT(?1, ' ', ?2)));";
+    let query = "INSERT INTO songs(name, author, link, mood, genre, lang, dub_checker) VALUES (?1, ?2, ?3, ?4, ?5, ?6, LOWER(CONCAT(?1, ' ', ?2)));";
     let mut statement = (*connection).prepare(query)?;
-    statement.execute((&new_song.name, &new_song.author, &new_song.link, &new_song.mood, &new_song.genre))?;
+    statement.execute((&new_song.name, &new_song.author, &new_song.link, &new_song.mood, &new_song.genre, &new_song.lang))?;
     Ok(())
 }
 
@@ -143,6 +159,13 @@ fn add_genre(connection: &Connection, id: i32, genre: String) -> Result<()>{
     Ok(())
 }
 
+//Adds/replaces language tag
+fn add_lang(connection: &Connection, id: i32, lang: String) -> Result<()>{
+    let query = "UPDATE songs SET lang = ?2 WHERE id = ?1";
+    let mut statement = (*connection).prepare(query)?;
+    statement.execute((&id, &lang))?;
+    Ok(())
+}
 //Deletes entire row by provided id
 fn delete_song(connection: &Connection, id: i32) -> Result<()>{
     let query = "DELETE FROM songs WHERE id = ?1";
@@ -154,7 +177,7 @@ fn delete_song(connection: &Connection, id: i32) -> Result<()>{
 fn randomise_song(connection: &Connection) -> Result<()>{
     //This query shuffles row order in database and selectts only one value
     //there is no need to use rand crate :D
-    let mut statement = (*connection).prepare("SELECT id, name, author, link, mood, genre FROM songs ORDER BY RANDOM() LIMIT 1")?;
+    let mut statement = (*connection).prepare("SELECT id, name, author, link, mood, genre, lang FROM songs ORDER BY RANDOM() LIMIT 1")?;
     let songs_iter = statement.query_map([], |row| {
         Ok(
             Song{
@@ -164,6 +187,7 @@ fn randomise_song(connection: &Connection) -> Result<()>{
                 link: row.get(3)?,
                 mood: row.get(4)?,
                 genre: row.get(5)?,
+                lang: row.get(6)?,
             }
         )
     })?;
@@ -171,17 +195,22 @@ fn randomise_song(connection: &Connection) -> Result<()>{
         //Variable to avoid moving value
         let rand_song = song.unwrap();
         println!("\n{:?} – {:?}", rand_song.author, rand_song.name);
+        println!("ID: {:?}", rand_song.id);
         match rand_song.link {
             Some(_)=> println!("Link: {:?}", rand_song.link.unwrap()),
             None => println!("Link: ")
         }
         match rand_song.mood {
             Some(_)=> println!("Mood: {:?}", rand_song.mood.unwrap()),
-            None => println!("Genre: ")
+            None => println!("Mood: ")
         }
         match rand_song.genre {
-            Some(_)=> println!("Genre: {:?}\n", rand_song.genre.unwrap()),
-            None => println!("Genre: \n")
+            Some(_)=> println!("Genre: {:?}", rand_song.genre.unwrap()),
+            None => println!("Genre: ")
+        }
+        match rand_song.lang {
+            Some(_)=> println!("Language: {:?}\n", rand_song.lang.unwrap()),
+            None => println!("Language: \n")
         }
     };
     Ok(())
@@ -198,7 +227,7 @@ fn main() -> Result<()>{
     let args = Args::parse();
     let _ = args_handler(&connection, &args);
     //Checking if no 'manipulation' arguments were provided, then returning random song from db
-    if (args.new, args.link, args.mood, args.genre, args.delete) == (false, false, false, false, false){
+    if (args.new, args.link, args.mood, args.genre, args.lang, args.delete) == (false, false, false, false, false, false){
         let _ = randomise_song(&connection);
     }
     Ok(())

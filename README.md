@@ -1,7 +1,7 @@
-# random_music_cli 0.1.0
+# random_music_cli 0.2.0
 
-*Core db will be uploaded later, stay tuned!*
-*for now you can use this app to create your own db with songs*
+**Core db will be uploaded later, stay tuned!**
+**for now you can use this app to create your own db with songs**
 
 This is simple Rust program to choose some songs to play.
 It's CLI application so I can not imagine someone using this
