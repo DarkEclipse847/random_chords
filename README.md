@@ -1,4 +1,4 @@
-# random_music_cli 0.2.0
+# random_music_cli 0.3.0
 
 **Core db will be uploaded later, stay tuned!**
 **for now you can use this app to create your own db with songs**
@@ -24,5 +24,3 @@ When you run this program it randomly chooses one song from
 a large database, sends you link to tabs/chords
 You can add/remove songs from that database
 (in concept of telegram bot, some supervision will be required on our side)
-
-

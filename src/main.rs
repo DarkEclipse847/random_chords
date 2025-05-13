@@ -2,6 +2,7 @@ use rusqlite::{Connection, Result};
 use clap::Parser;
 use clap::ArgAction;
 use std::io;
+use std::collections::HashSet;
 
 #[derive(Debug)]
 struct Song{
@@ -37,11 +38,19 @@ struct Args{
     delete: bool
 }
 
+
+
+
 //This function handles arguments using 'clap'
 //it calls some add/delete functions(presented below) depending on argument provided
 //When certain argument encountered, this function calls std::io lib to handle user inputs
 //that inputs are then trimmed and assigned to types.
-fn args_handler(connection: &Connection, args: &Args){
+fn args_handler(
+    connection: &Connection,
+    args: &Args,
+    mood_hashset: HashSet<&str>,
+    genre_hashset: HashSet<&str>
+){
     if args.new == true{
         let mut name_input = String::new();
         let mut author_input = String::new();
@@ -65,34 +74,36 @@ fn args_handler(connection: &Connection, args: &Args){
         let mut link_input = String::new();
         println!("\nPlease input id of the song");
         io::stdin().read_line(&mut id_input).expect("Failed to process your input");
-        println!("\nPlease input name of the song");
+        println!("Please input name of the song");
         io::stdin().read_line(&mut link_input).expect("Failed to process your input");
         let _ = add_link(connection, id_input.trim().parse::<i32>().unwrap(), link_input.trim().to_string());
     }
     if args.mood == true{
+        println!("Here is a list of supported moods:\n{:?}", &mood_hashset);
+
         let mut id_input = String::new();
         let mut mood_input = String::new();
         println!("\nPlease input id of the song");
         io::stdin().read_line(&mut id_input).expect("Failed to process your input");
-        println!("\nPlease input mood of the song");
+        println!("Please input mood of the song");
         io::stdin().read_line(&mut mood_input).expect("Failed to process your input");
-        let _ = add_mood(connection, id_input.trim().parse::<i32>().unwrap(), mood_input.trim().to_string());
+        let _ = add_mood(connection, id_input.trim().parse::<i32>().unwrap(), mood_input.trim().to_string(), mood_hashset);
     }
     if args.genre == true{
         let mut id_input = String::new();
         let mut genre_input = String::new();
         println!("\nPlease input id of the song");
         io::stdin().read_line(&mut id_input).expect("Failed to process your input");
-        println!("\nPlease input genre of the song");
+        println!("Please input genre of the song");
         io::stdin().read_line(&mut genre_input).expect("Failed to process your input");
-        let _ = add_genre(connection, id_input.trim().parse::<i32>().unwrap(), genre_input.trim().to_string());
+        let _ = add_genre(connection, id_input.trim().parse::<i32>().unwrap(), genre_input.trim().to_string(), genre_hashset);
     }
     if args.lang == true{
         let mut id_input = String::new();
         let mut lang_input = String::new();
         println!("\nPlease input id of the song");
         io::stdin().read_line(&mut id_input).expect("Failed to process your input");
-        println!("\nPlease input language of the song");
+        println!("Please input language of the song");
         io::stdin().read_line(&mut lang_input).expect("Failed to process your input");
         let _ = add_lang(connection, id_input.trim().parse::<i32>().unwrap(), lang_input.trim().to_string());
     }
@@ -144,18 +155,32 @@ fn add_link(connection: &Connection, id: i32, link: String)-> Result<()>{
 }
 
 //Adds/replaces mood tags in existing db row
-fn add_mood(connection: &Connection, id: i32, mood: String) -> Result<()>{
-    let query = "UPDATE songs SET mood = ?2 WHERE id = ?1";
-    let mut statement = (*connection).prepare(query)?;
-    statement.execute((&id, &mood))?;
+fn add_mood(connection: &Connection, id: i32, mood: String, mood_hashset: HashSet<&str>) -> Result<()>{
+    let binding = mood.to_lowercase();
+    let mood_slice_hash: HashSet<&str> = HashSet::from_iter(binding.split(", ").collect::<Vec<&str>>().into_iter());
+    let hash_diff: HashSet<_> = mood_slice_hash.difference(&mood_hashset).collect();
+    if hash_diff.is_empty(){    
+        let query = "UPDATE songs SET mood = ?2 WHERE id = ?1";
+        let mut statement = (*connection).prepare(query)?;
+        statement.execute((&id, &mood))?;
+    } else {
+        println!("You cannot use {:?} as mood", hash_diff);
+    }
     Ok(())
 }
 
 //Adds/replaces genre tags in existing db row
-fn add_genre(connection: &Connection, id: i32, genre: String) -> Result<()>{
-    let query = "UPDATE songs SET genre = ?2 WHERE id = ?1";
-    let mut statement = (*connection).prepare(query)?;
-    statement.execute((&id, &genre))?;
+fn add_genre(connection: &Connection, id: i32, genre: String, genre_hashset: HashSet<&str>) -> Result<()>{
+    let binding = genre.to_lowercase();
+    let genre_slice_hash: HashSet<&str> = HashSet::from_iter(binding.split(", ").collect::<Vec<&str>>().into_iter());
+    let hash_diff: HashSet<_> = genre_slice_hash.difference(&genre_hashset).collect();
+    if hash_diff.is_empty(){    
+        let query = "UPDATE songs SET genre = ?2 WHERE id = ?1";
+        let mut statement = (*connection).prepare(query)?;
+        statement.execute((&id, &genre))?;
+    } else {
+        println!("You cannot use {:?} as mood", hash_diff);
+    }
     Ok(())
 }
 
@@ -224,8 +249,11 @@ fn main() -> Result<()>{
     let connection = Connection::open(db_path)?;
     let _ = create_db(&connection);
 
+    let mut mood: HashSet<&str> = HashSet::from(["calm", "energetic", "sad", "positive", "strange", "common", "relaxing", "uplifting", "entertaining", "outrageous", "absurd", "surreal", "desperate", "vibey", "melancholic", "dreary"]);
+    let mut genre: HashSet<&str> = HashSet::from(["hip-hop", "reggae", "metal", "soul", "pop", "folk", "jazz", "blues", "rock", "indie", "punk", "country"]);
+
     let args = Args::parse();
-    let _ = args_handler(&connection, &args);
+    let _ = args_handler(&connection, &args, mood, genre);
     //Checking if no 'manipulation' arguments were provided, then returning random song from db
     if (args.new, args.link, args.mood, args.genre, args.lang, args.delete) == (false, false, false, false, false, false){
         let _ = randomise_song(&connection);
