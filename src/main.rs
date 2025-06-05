@@ -4,8 +4,10 @@ use clap::ArgAction;
 use std::io;
 use std::collections::HashSet;
 
+mod filter;
+
 #[derive(Debug)]
-struct Song{
+pub struct Song{
     id: i32,
     name: String,
     author: String,
@@ -35,7 +37,11 @@ struct Args{
     lang: bool,
     #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
     //delete song from pool by id
-    delete: bool
+    delete: bool,
+    
+
+    #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
+    filter: bool
 }
 
 
@@ -48,8 +54,9 @@ struct Args{
 fn args_handler(
     connection: &Connection,
     args: &Args,
-    mood_hashset: HashSet<&str>,
-    genre_hashset: HashSet<&str>
+    mood_hashset: &HashSet<&str>,
+    genre_hashset: &HashSet<&str>,
+    filter_hashset: HashSet<&str>
 ){
     if args.new == true{
         let mut name_input = String::new();
@@ -113,6 +120,13 @@ fn args_handler(
         io::stdin().read_line(&mut id_input).expect("Failed to process your input");
         let _ = delete_song(connection, id_input.trim().parse::<i32>().unwrap());
     }
+
+    if args.filter == true{
+        let mut filter_input = String::new();
+        println!("\nPlease enter preferable types of filter");
+        io::stdin().read_line(&mut filter_input).expect("Failed to precess filter input");
+        filter::filter(connection, filter_input.trim().to_string(), filter_hashset, mood_hashset, genre_hashset);
+    }
 }
 
 fn create_db(connection: &Connection) -> Result<()>{
@@ -155,10 +169,10 @@ fn add_link(connection: &Connection, id: i32, link: String)-> Result<()>{
 }
 
 //Adds/replaces mood tags in existing db row
-fn add_mood(connection: &Connection, id: i32, mood: String, mood_hashset: HashSet<&str>) -> Result<()>{
+fn add_mood(connection: &Connection, id: i32, mood: String, mood_hashset: &HashSet<&str>) -> Result<()>{
     let binding = mood.to_lowercase();
     let mood_slice_hash: HashSet<&str> = HashSet::from_iter(binding.split(", ").collect::<Vec<&str>>().into_iter());
-    let hash_diff: HashSet<_> = mood_slice_hash.difference(&mood_hashset).collect();
+    let hash_diff: HashSet<_> = mood_slice_hash.difference(mood_hashset).collect();
     if hash_diff.is_empty(){    
         let query = "UPDATE songs SET mood = ?2 WHERE id = ?1";
         let mut statement = (*connection).prepare(query)?;
@@ -170,10 +184,10 @@ fn add_mood(connection: &Connection, id: i32, mood: String, mood_hashset: HashSe
 }
 
 //Adds/replaces genre tags in existing db row
-fn add_genre(connection: &Connection, id: i32, genre: String, genre_hashset: HashSet<&str>) -> Result<()>{
+fn add_genre(connection: &Connection, id: i32, genre: String, genre_hashset: &HashSet<&str>) -> Result<()>{
     let binding = genre.to_lowercase();
     let genre_slice_hash: HashSet<&str> = HashSet::from_iter(binding.split(", ").collect::<Vec<&str>>().into_iter());
-    let hash_diff: HashSet<_> = genre_slice_hash.difference(&genre_hashset).collect();
+    let hash_diff: HashSet<_> = genre_slice_hash.difference(genre_hashset).collect();
     if hash_diff.is_empty(){    
         let query = "UPDATE songs SET genre = ?2 WHERE id = ?1";
         let mut statement = (*connection).prepare(query)?;
@@ -198,6 +212,8 @@ fn delete_song(connection: &Connection, id: i32) -> Result<()>{
     let _ = statement.execute(((&id),));
     Ok(())
 }
+
+
 
 fn randomise_song(connection: &Connection) -> Result<()>{
     //This query shuffles row order in database and selectts only one value
@@ -251,11 +267,12 @@ fn main() -> Result<()>{
 
     let mut mood: HashSet<&str> = HashSet::from(["calm", "energetic", "sad", "positive", "strange", "common", "relaxing", "uplifting", "entertaining", "outrageous", "absurd", "surreal", "desperate", "vibey", "melancholic", "dreary"]);
     let mut genre: HashSet<&str> = HashSet::from(["hip-hop", "reggae", "metal", "soul", "pop", "folk", "jazz", "blues", "rock", "indie", "punk", "country"]);
+    let mut filter: HashSet<&str> = HashSet::from(["genre", "mood", "lang"]);
 
     let args = Args::parse();
-    let _ = args_handler(&connection, &args, mood, genre);
+    let _ = args_handler(&connection, &args, &mood, &genre, filter);
     //Checking if no 'manipulation' arguments were provided, then returning random song from db
-    if (args.new, args.link, args.mood, args.genre, args.lang, args.delete) == (false, false, false, false, false, false){
+    if (args.new, args.link, args.mood, args.genre, args.lang, args.delete, args.filter) == (false, false, false, false, false, false, false){
         let _ = randomise_song(&connection);
     }
     Ok(())
