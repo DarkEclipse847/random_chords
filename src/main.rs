@@ -56,6 +56,7 @@ fn args_handler(
     args: &Args,
     mood_hashset: &HashSet<&str>,
     genre_hashset: &HashSet<&str>,
+    lang_hashset: &HashSet<&str>,
     filter_hashset: HashSet<&str>
 ){
     if args.new == true{
@@ -112,7 +113,7 @@ fn args_handler(
         io::stdin().read_line(&mut id_input).expect("Failed to process your input");
         println!("Please input language of the song");
         io::stdin().read_line(&mut lang_input).expect("Failed to process your input");
-        let _ = add_lang(connection, id_input.trim().parse::<i32>().unwrap(), lang_input.trim().to_string());
+        let _ = add_lang(connection, id_input.trim().parse::<i32>().unwrap(), lang_input.trim().to_string(), lang_hashset);
     }
     if args.delete == true{
         let mut id_input = String::new();
@@ -125,7 +126,7 @@ fn args_handler(
         let mut filter_input = String::new();
         println!("\nPlease enter preferable types of filter");
         io::stdin().read_line(&mut filter_input).expect("Failed to precess filter input");
-        filter::filter(connection, filter_input.trim().to_string(), filter_hashset, mood_hashset, genre_hashset);
+        filter::filter(connection, filter_input.trim().to_string(), filter_hashset, mood_hashset, genre_hashset, lang_hashset);
     }
 }
 
@@ -193,16 +194,23 @@ fn add_genre(connection: &Connection, id: i32, genre: String, genre_hashset: &Ha
         let mut statement = (*connection).prepare(query)?;
         statement.execute((&id, &genre))?;
     } else {
-        println!("You cannot use {:?} as mood", hash_diff);
+        println!("You cannot use {:?} as genre", hash_diff);
     }
     Ok(())
 }
 
 //Adds/replaces language tag
-fn add_lang(connection: &Connection, id: i32, lang: String) -> Result<()>{
-    let query = "UPDATE songs SET lang = ?2 WHERE id = ?1";
-    let mut statement = (*connection).prepare(query)?;
-    statement.execute((&id, &lang))?;
+fn add_lang(connection: &Connection, id: i32, lang: String, lang_hashset: &HashSet<&str>) -> Result<()>{
+    let binding = lang.to_lowercase();
+    let lang_slice_hash: HashSet<&str> = HashSet::from_iter(binding.split(", ").collect::<Vec<&str>>().into_iter());
+    let hash_diff: HashSet<_> = lang_slice_hash.difference(lang_hashset).collect();
+    if hash_diff.is_empty(){    
+        let query = "UPDATE songs SET lang = ?2 WHERE id = ?1";
+        let mut statement = (*connection).prepare(query)?;
+        statement.execute((&id, &lang))?;
+    } else {
+        println!("You cannot use {:?} as lang", hash_diff);
+    }
     Ok(())
 }
 //Deletes entire row by provided id
@@ -268,9 +276,10 @@ fn main() -> Result<()>{
     let mut mood: HashSet<&str> = HashSet::from(["calm", "energetic", "sad", "positive", "strange", "common", "relaxing", "uplifting", "entertaining", "outrageous", "absurd", "surreal", "desperate", "vibey", "melancholic", "dreary"]);
     let mut genre: HashSet<&str> = HashSet::from(["hip-hop", "reggae", "metal", "soul", "pop", "folk", "jazz", "blues", "rock", "indie", "punk", "country"]);
     let mut filter: HashSet<&str> = HashSet::from(["genre", "mood", "lang"]);
+    let mut lang: HashSet<&str> = HashSet::from(["russian", "english"]);
 
     let args = Args::parse();
-    let _ = args_handler(&connection, &args, &mood, &genre, filter);
+    let _ = args_handler(&connection, &args, &mood, &genre, &lang, filter);
     //Checking if no 'manipulation' arguments were provided, then returning random song from db
     if (args.new, args.link, args.mood, args.genre, args.lang, args.delete, args.filter) == (false, false, false, false, false, false, false){
         let _ = randomise_song(&connection);

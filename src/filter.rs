@@ -4,9 +4,6 @@ use std::collections::HashSet;
 
 use crate::Song;
 
-//TODO: add lang filter(need to add fixed values as it is done for
-//      genres and moods in main.rs)
-
 //This function is too large in my opinion, thinking about a way
 //to separate this shit into smaller pieces of code
 pub fn filter(
@@ -14,7 +11,8 @@ pub fn filter(
     params: String,
     params_set: HashSet<&str>,
     mood_set: &HashSet<&str>,
-    genre_set: &HashSet<&str>
+    genre_set: &HashSet<&str>,
+    lang_set: &HashSet<&str>
 ) -> Result<()>{
     let binding = params.to_lowercase();
     let params_slice_hash: HashSet<&str> = HashSet::from_iter(binding.split(", ").collect::<Vec<&str>>().into_iter());
@@ -49,12 +47,21 @@ pub fn filter(
                     mood_sql = mood_sql.trim_end_matches("AND ").to_string();
                     query = query + " ( " + &mood_sql + " ) AND ";
                 },
-                "lang" => println!("tbd"),
+                "lang" => {
+                    let lang_res = filter_lang(lang_set).unwrap().unwrap();
+                    let mut lang_sql = String::new();
+                    for item in lang_res.iter(){
+                        counter = counter + 1;
+                        filter_vec.push(item.to_string());
+                        lang_sql = lang_sql + format!("lang LIKE '%' || ?{} || '%' AND ", counter).as_str();
+                    }
+                    lang_sql = lang_sql.trim_end_matches("AND ").to_string();
+                    query = query + " ( " + &lang_sql + " ) AND ";
+                },
                 &_ => println!("WTF")
             }
         }
         query = query.trim_end_matches("AND ").to_string() + " ORDER BY RANDOM() LIMIT 1";
-        println!("Query: {:?}", query);
         let mut statement = (*connection).prepare(&query)?;
         for test in filter_vec.iter(){println!("{:?}", test);};
         let songs_iter = statement.query_map(rusqlite::params_from_iter(filter_vec), |row| {
@@ -148,6 +155,27 @@ fn filter_genre<'a>(
         Ok(Some(genre_slice_hash_derefed))
     } else {
         println!("You cannot use {:?} as a genre filter param", hash_diff);
+        Ok(None)
+    }
+}
+
+fn filter_lang<'a>(
+    lang_set: &'a HashSet<&'a str>
+) -> Result<Option<HashSet<String>>>{
+    let mut lang_input = String::new();
+    println!("Enter lang filter");
+    io::stdin().read_line(&mut lang_input).expect("Error happened, while processing lang input");
+    let binding = lang_input.trim().to_string().to_lowercase();
+    let lang_slice_hash: HashSet<&str> = HashSet::from_iter(binding.split(", ").collect::<Vec<&str>>().into_iter());
+    let hash_diff: HashSet<_> = lang_slice_hash.difference(lang_set).collect();
+    if hash_diff.is_empty(){
+        let mut lang_slice_hash_derefed = HashSet::new();
+        for item in lang_slice_hash.iter(){
+            lang_slice_hash_derefed.insert(item.to_string());
+        }
+        Ok(Some(lang_slice_hash_derefed))
+    } else {
+        println!("You cannot use {:?} as a lang filter param", hash_diff);
         Ok(None)
     }
 }

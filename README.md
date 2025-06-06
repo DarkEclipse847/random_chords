@@ -1,4 +1,4 @@
-# random_music_cli 0.4.0
+# random_music_cli 0.4.1
 
 **Core db will be uploaded later, stay tuned!**
 **for now you can use this app to create your own db with songs**
@@ -30,4 +30,4 @@ You can add/remove songs from that database
 
 * [ ] Need to change logic of filter func, in the way that it
 that it can accept empty values to follow DRY priciple
-* [ ] Add fixed language list to fit other filters
+* [x] Add fixed language list to fit other filters
