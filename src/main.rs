@@ -5,6 +5,7 @@ use std::io;
 use std::collections::HashSet;
 
 mod filter;
+mod utils;
 
 #[derive(Debug)]
 pub struct Song{
@@ -20,26 +21,26 @@ pub struct Song{
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args{
-    #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
     //add a song(name and author) to database
+    #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
     new: bool,
-    #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
     //add/replace a link(with chords) on an existing song by id
+    #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
     link: bool,
-    #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
     //add/replace the mood tags on an existing song by id
-    mood: bool,
     #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
+    mood: bool,
     //add/replace the genre tags on an existing song by id
+    #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
     genre: bool,
-    #[arg(long, default_value_t = false, action = ArgAction::SetTrue)]
     //add/replace language of the song by id
+    #[arg(long, default_value_t = false, action = ArgAction::SetTrue)]
     lang: bool,
     #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
     //delete song from pool by id
     delete: bool,
     
-
+    //provides songs in certain categories(you will choose filter mode)
     #[arg(long, short, default_value_t = false, action = ArgAction::SetTrue)]
     filter: bool
 }
@@ -87,13 +88,12 @@ fn args_handler(
         let _ = add_link(connection, id_input.trim().parse::<i32>().unwrap(), link_input.trim().to_string());
     }
     if args.mood == true{
-        println!("Here is a list of supported moods:\n{:?}", &mood_hashset);
-
         let mut id_input = String::new();
         let mut mood_input = String::new();
         println!("\nPlease input id of the song");
         io::stdin().read_line(&mut id_input).expect("Failed to process your input");
         println!("Please input mood of the song");
+        println!("Here is a list of supported args:{}\n", utils::params_list(mood_hashset));
         io::stdin().read_line(&mut mood_input).expect("Failed to process your input");
         let _ = add_mood(connection, id_input.trim().parse::<i32>().unwrap(), mood_input.trim().to_string(), mood_hashset);
     }
@@ -103,6 +103,7 @@ fn args_handler(
         println!("\nPlease input id of the song");
         io::stdin().read_line(&mut id_input).expect("Failed to process your input");
         println!("Please input genre of the song");
+        println!("Here is a list of supported args:{}\n", utils::params_list(genre_hashset));
         io::stdin().read_line(&mut genre_input).expect("Failed to process your input");
         let _ = add_genre(connection, id_input.trim().parse::<i32>().unwrap(), genre_input.trim().to_string(), genre_hashset);
     }
@@ -112,6 +113,7 @@ fn args_handler(
         println!("\nPlease input id of the song");
         io::stdin().read_line(&mut id_input).expect("Failed to process your input");
         println!("Please input language of the song");
+        println!("Here is a list of supported args:{}\n", utils::params_list(lang_hashset));
         io::stdin().read_line(&mut lang_input).expect("Failed to process your input");
         let _ = add_lang(connection, id_input.trim().parse::<i32>().unwrap(), lang_input.trim().to_string(), lang_hashset);
     }
@@ -125,8 +127,9 @@ fn args_handler(
     if args.filter == true{
         let mut filter_input = String::new();
         println!("\nPlease enter preferable types of filter");
+        println!("Here is a list of supported args:{}\n", utils::params_list(&filter_hashset));
         io::stdin().read_line(&mut filter_input).expect("Failed to precess filter input");
-        filter::filter(connection, filter_input.trim().to_string(), filter_hashset, mood_hashset, genre_hashset, lang_hashset);
+        let _ = filter::filter(connection, filter_input.trim().to_string(), filter_hashset, mood_hashset, genre_hashset, lang_hashset);
     }
 }
 

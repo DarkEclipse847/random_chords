@@ -63,7 +63,6 @@ pub fn filter(
         }
         query = query.trim_end_matches("AND ").to_string() + " ORDER BY RANDOM() LIMIT 1";
         let mut statement = (*connection).prepare(&query)?;
-        for test in filter_vec.iter(){println!("{:?}", test);};
         let songs_iter = statement.query_map(rusqlite::params_from_iter(filter_vec), |row| {
             Ok(
                 Song{
@@ -111,7 +110,8 @@ fn filter_mood<'a>(
     mood_set: &'a HashSet<&'a str>
 ) -> Result<Option<HashSet<String>>>{
     let mut mood_input = String::new();
-    println!("Enter MOOD filter");
+    println!("Please, enter MOOD filter");
+    println!("Supported mood filters are:{}\n", crate::utils::params_list(mood_set));
     io::stdin().read_line(&mut mood_input).expect("Error happened, while processing mood input");
     let binding = mood_input.trim().to_string().to_lowercase();
     let mood_slice_hash: HashSet<&str> = HashSet::from_iter(binding.split(", ").collect::<Vec<&str>>().into_iter());
@@ -142,7 +142,8 @@ fn filter_genre<'a>(
     genre_set: &'a HashSet<&'a str>
 ) -> Result<Option<HashSet<String>>>{
     let mut genre_input = String::new();
-    println!("Enter GENRE filter");
+    println!("Please, enter GENRE filter");
+    println!("Supported genre filters are:{}\n", crate::utils::params_list(genre_set));
     io::stdin().read_line(&mut genre_input).expect("Error happened, while processing genre input");
     let binding = genre_input.trim().to_string().to_lowercase();
     let genre_slice_hash: HashSet<&str> = HashSet::from_iter(binding.split(", ").collect::<Vec<&str>>().into_iter());
@@ -163,7 +164,8 @@ fn filter_lang<'a>(
     lang_set: &'a HashSet<&'a str>
 ) -> Result<Option<HashSet<String>>>{
     let mut lang_input = String::new();
-    println!("Enter lang filter");
+    println!("Please, enter LANG filter");
+    println!("Supported mood filters are:{}\n", crate::utils::params_list(lang_set));
     io::stdin().read_line(&mut lang_input).expect("Error happened, while processing lang input");
     let binding = lang_input.trim().to_string().to_lowercase();
     let lang_slice_hash: HashSet<&str> = HashSet::from_iter(binding.split(", ").collect::<Vec<&str>>().into_iter());
@@ -179,5 +181,6 @@ fn filter_lang<'a>(
         Ok(None)
     }
 }
+
 
 

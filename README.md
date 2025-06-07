@@ -1,4 +1,4 @@
-# random_music_cli 0.4.1
+# random_music_cli 0.4.2
 
 **Core db will be uploaded later, stay tuned!**
 **for now you can use this app to create your own db with songs**
@@ -31,3 +31,4 @@ You can add/remove songs from that database
 * [ ] Need to change logic of filter func, in the way that it
 that it can accept empty values to follow DRY priciple
 * [x] Add fixed language list to fit other filters
+* [ ] Consider moving away from HashSets because their unsorted sructure can lead to bad user expirience(This is bad for creating api too, because of unnecessary parsing logic will be needed)
