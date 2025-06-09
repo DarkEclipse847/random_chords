@@ -5,8 +5,8 @@
 
 This is simple Rust program to choose some songs to play.
 It's CLI application so I can not imagine someone using this
-seriosly. It is just a base for future web-app and telegram bot.
-Also, all of the code was written using termux, so shoutot to the
+seriously. It is just a base for future web-app and telegram bot.
+Also, all of the code was written using termux, so shoutout to the
 creators for such opportunity :)
 
 ### Philosophy of the app
